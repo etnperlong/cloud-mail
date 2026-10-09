@@ -22,6 +22,8 @@ const exclude = [
 ];
 
 const requirePerms = [
+	'/account/forward',
+	'/user/forward',
 	'/email/send',
 	'/email/delete',
 	'/account/list',
@@ -62,6 +64,7 @@ const requirePerms = [
 ];
 
 const premKey = {
+	'account:forward': ['/account/forward'],
 	'email:delete': ['/email/delete'],
 	'email:send': ['/email/send'],
 	'account:add': ['/account/add'],
@@ -72,7 +75,7 @@ const premKey = {
 	'role:set': ['/role/set','/role/setDefault'],
 	'role:query': ['/role/list', '/role/tree'],
 	'role:delete': ['/role/delete'],
-	'user:query': ['/user/list','/user/allAccount'],
+	'user:query': ['/user/list','/user/allAccount','/user/forward'],
 	'user:add': ['/user/add'],
 	'user:reset-send': ['/user/resetSendCount'],
 	'user:set-pwd': ['/user/setPwd'],

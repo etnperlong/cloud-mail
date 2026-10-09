@@ -30,6 +30,11 @@
         </div>
       </div>
     </div>
+    <div class="container" v-if="hasPerm('account:forward')">
+      <div class="title">{{ $t('userForward.title') }}</div>
+      <el-button @click="forwardRef.open(userStore.user.account)">{{ $t('userForward.manageMain') }}</el-button>
+    </div>
+    <AccountForward ref="forwardRef" />
     <div class="language">
       <div class="title">{{$t('language')}}</div>
       <el-select
@@ -61,6 +66,9 @@
   </div>
 </template>
 <script setup>
+import AccountForward from "@/components/account-forward/index.vue";
+import {hasPerm} from "@/perm/perm.js";
+const forwardRef = ref();
 import {reactive, ref, defineOptions} from 'vue'
 import {resetPassword, userDelete} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";

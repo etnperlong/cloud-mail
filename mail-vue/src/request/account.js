@@ -23,3 +23,27 @@ export function accountSetAllReceive(accountId) {
 export function accountSetAsTop(accountId) {
     return http.put('/account/setAsTop', {accountId})
 }
+
+export function forwardList(accountId) {
+    return http.get('/account/forward', {params: {accountId}});
+}
+
+export function forwardRefresh(accountId) {
+    return http.post('/account/forward/refresh', {accountId});
+}
+
+export function forwardAdd(accountId, email) {
+    return http.post('/account/forward', {accountId, email});
+}
+
+export function forwardDelete(accountId, forwardId) {
+    return http.delete('/account/forward', {params: {accountId, forwardId}});
+}
+
+export function forwardResend(accountId, forwardId) {
+    return http.post('/account/forward/resend', {accountId, forwardId});
+}
+
+export function userForwardList(userId) {
+    return http.get('/user/forward', {params: {userId}});
+}

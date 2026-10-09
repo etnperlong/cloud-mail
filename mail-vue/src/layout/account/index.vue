@@ -24,6 +24,7 @@
                 <Icon icon="fluent:settings-24-filled" width="21" height="21" color="#909399"/>
                 <template #dropdown>
                   <el-dropdown-menu>
+                    <el-dropdown-item v-if="hasPerm('account:forward')" @click="forwardRef.open(item)">{{ $t('userForward.title') }}</el-dropdown-item>
                     <el-dropdown-item v-if="hasPerm('email:send')" @click="openSetName(item)">{{ $t('rename') }}</el-dropdown-item>
                     <el-dropdown-item v-if="item.accountId !== userStore.user.account.accountId" @click="setAsTop(item, index)">{{ $t('pin') }}</el-dropdown-item>
                     <el-dropdown-item v-if="item.accountId !== userStore.user.account.accountId && hasPerm('account:delete')"
@@ -75,6 +76,7 @@
       </div>
 
     </el-scrollbar>
+    <AccountForward ref="forwardRef" />
     <el-dialog v-model="showAdd" :title="$t('addAccount')">
       <div class="container">
         <el-input v-model="addForm.email" ref="addRef" type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="submit">
@@ -126,6 +128,8 @@
   </div>
 </template>
 <script setup>
+import AccountForward from "@/components/account-forward/index.vue";
+const forwardRef = ref();
 import {Icon} from "@iconify/vue";
 import {computed, nextTick, reactive, ref, watch} from "vue";
 import {
@@ -295,7 +299,7 @@ function setAllReceive(account) {
 
 
 function showNullSetting(item) {
-  return !hasPerm('email:send') && !(item.accountId !== userStore.user.account.accountId && hasPerm('account:delete'))
+  return !hasPerm('account:forward') && !hasPerm('email:send') && !(item.accountId !== userStore.user.account.accountId && hasPerm('account:delete'))
 }
 
 function itemBg(accountId) {

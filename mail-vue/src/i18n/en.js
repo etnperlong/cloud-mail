@@ -1,4 +1,22 @@
 const en = {
+    userForward: {
+    "title": "Email forwarding",
+    "notConfigured": "Email forwarding is not configured. Contact your administrator.",
+    "refreshFailed": "Could not refresh status. Displayed status may be outdated. Please retry.",
+    "help": "After adding an external address, open the Cloudflare verification link in that mailbox, then refresh status. Original messages remain here.",
+    "cached": "Cached verification status for all mailboxes, updated hourly. Revoked permission or disabled mailboxes stop forwarding.",
+    "refresh": "Refresh status",
+    "empty": "No forwarding addresses yet",
+    "active": "Active",
+    "pending": "Pending verification",
+    "resend": "Resend verification",
+    "destination": "External email address",
+    "limit": "{count} / {limit} addresses added",
+    "requested": "Verification requested. Check the destination inbox, including spam.",
+    "exists": "Cloudflare already has this address. Status was synced, but a new verification email was not confirmed. Find the original email or contact your administrator.",
+    "manageMain": "Manage primary mailbox forwarding"
+},
+
     inbox: 'Inbox',
     drafts: 'Drafts',
     sent: 'Sent',

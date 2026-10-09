@@ -1,4 +1,10 @@
 const zh = {
+	forwardNotConfigured: "邮件转发未配置，请联系管理员。",
+	forwardOwnDomain: "不能转发到本系统的邮箱域名。",
+	forwardApiError: "无法访问 Cloudflare 验证服务，请稍后重试或联系管理员。",
+	forwardDuplicateOrLimit: "地址已存在或已达到每个邮箱 {{count}} 个地址的上限。",
+	forwardResendWait: "地址不存在或操作过于频繁，请等待 60 秒后重试。",
+
 	IncorrectPwd: '密码输入错误',
 	addAccountDisabled: '添加邮箱功能已关闭',
 	regDisabled: '注册功能已关闭',
@@ -69,6 +75,7 @@ const zh = {
 	emailExistDatabase: '有邮箱已存在数据库中',
 	notConfigOss: '对象存储未配置',
 	perms: {
+		"邮箱转发": "邮箱转发",
 		"邮件": "邮件",
 		"邮件发送": "邮件发送",
 		"邮件删除": "邮件删除",

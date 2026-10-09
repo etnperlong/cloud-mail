@@ -1,4 +1,22 @@
 const zh = {
+    userForward: {
+    "title": "邮件转发",
+    "notConfigured": "邮件转发未配置，请联系管理员。",
+    "refreshFailed": "状态刷新失败，显示的可能是旧状态。请稍后重试。",
+    "help": "添加外部邮箱后，请在目标邮箱中点击 Cloudflare 验证链接，再刷新状态。原邮件仍保留在当前邮箱。",
+    "cached": "此处显示所有邮箱的已缓存验证状态，后台每小时更新。权限被撤销或邮箱停用时不转发。",
+    "refresh": "刷新状态",
+    "empty": "尚未添加转发地址",
+    "active": "已生效",
+    "pending": "待验证",
+    "resend": "重新发送验证",
+    "destination": "外部邮箱地址",
+    "limit": "已添加 {count} / {limit} 个地址",
+    "requested": "验证请求已提交，请检查目标邮箱（包括垃圾邮件）。",
+    "exists": "Cloudflare 已有此地址，状态已同步；未确认发出新验证邮件，请查找原验证邮件或联系管理员。",
+    "manageMain": "设置主邮箱转发"
+},
+
     inbox: '收件箱',
     drafts: '草稿箱',
     sent: '已发送',

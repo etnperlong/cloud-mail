@@ -36,6 +36,9 @@ crons = ["0 * * * *"]	#每小时执行；resetDaySendCount 仅在 UTC 0 点生�
 
 
 [vars]
+#cf_account_id = ""		#用户自助转发所用 Cloudflare 账号 ID
+#forward_max_addresses = 3	#每个邮箱的转发地址上限
+#cf_api_token 使用 wrangler secret put cf_api_token 设置，勿写入此文件
 #ai_model = ""			#ai模型,不填默认使用@cf/meta/llama-3.1-8b-instruct-fast
 #analysis_cache = false			#是否开启分析数据缓存
 #orm_log = false			#是否sql日志

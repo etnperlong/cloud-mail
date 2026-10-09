@@ -1,3 +1,4 @@
+import accountForwardService from '../service/account-forward-service';
 import app from '../hono/hono';
 import accountService from '../service/account-service';
 import result from '../model/result';
@@ -31,4 +32,25 @@ app.put('/account/setAllReceive', async (c) => {
 app.put('/account/setAsTop', async (c) => {
 	await accountService.setAsTop(c, await c.req.json(), userContext.getUserId(c));
 	return c.json(result.ok());
+});
+
+app.get('/account/forward', async (c) => {
+	return c.json(result.ok(await accountForwardService.list(c, c.req.query(), userContext.getUserId(c))));
+});
+
+app.post('/account/forward/refresh', async (c) => {
+	return c.json(result.ok(await accountForwardService.list(c, await c.req.json(), userContext.getUserId(c))));
+});
+
+app.post('/account/forward', async (c) => {
+	return c.json(result.ok(await accountForwardService.add(c, await c.req.json(), userContext.getUserId(c))));
+});
+
+app.delete('/account/forward', async (c) => {
+	await accountForwardService.remove(c, c.req.query(), userContext.getUserId(c));
+	return c.json(result.ok());
+});
+
+app.post('/account/forward/resend', async (c) => {
+	return c.json(result.ok(await accountForwardService.resend(c, await c.req.json(), userContext.getUserId(c))));
 });

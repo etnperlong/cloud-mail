@@ -1,3 +1,4 @@
+import accountForwardService from './service/account-forward-service';
 import app from './hono/webs';
 import { email } from './email/email';
 import userService from './service/user-service';
@@ -30,6 +31,7 @@ export default {
 			return;
 		}
 
+		await accountForwardService.refreshAll({ env })
 		await verifyRecordService.clearRecord({ env })
 		await userService.resetDaySendCount({ env })
 		await emailService.completeReceiveAll({ env })

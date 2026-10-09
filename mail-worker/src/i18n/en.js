@@ -1,4 +1,10 @@
 const en = {
+	forwardNotConfigured: "Email forwarding is not configured. Contact your administrator.",
+	forwardOwnDomain: "Forwarding to a domain hosted by this system is not allowed.",
+	forwardApiError: "Cannot reach the Cloudflare verification service. Retry later or contact your administrator.",
+	forwardDuplicateOrLimit: "The address already exists or the limit of {{count}} addresses per mailbox has been reached.",
+	forwardResendWait: "Address not found or requested too recently. Wait 60 seconds and retry.",
+
 	IncorrectPwd: 'Incorrect password',
 	addAccountDisabled: 'Add Email Address feature is disabled',
 	regDisabled: 'Sign up is disabled',
@@ -69,6 +75,7 @@ const en = {
 	emailExistDatabase: 'Email already exists in the database',
 	notConfigOss: 'Object storage not configured',
 	perms: {
+		"邮箱转发": "Mailbox forwarding",
 		"邮件": "Emails",
 		"邮件发送": "Send Email",
 		"邮件删除": "Delete Email",

@@ -107,6 +107,7 @@
                       <el-dropdown-item v-else @click="restore(props.row)">{{ $t('restore') }}</el-dropdown-item>
                     </template>
                     <el-dropdown-item @click="openAccountList(props.row.userId)" >{{ $t('account') }}</el-dropdown-item>
+                    <el-dropdown-item @click="forwardRef.open(props.row, true)">{{ $t('userForward.title') }}</el-dropdown-item>
                     <el-dropdown-item @click="openDetails(props.row)" >{{ $t('details') }}</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
@@ -143,6 +144,7 @@
         </div>
       </div>
     </el-scrollbar>
+    <AccountForward ref="forwardRef" />
     <el-dialog class="dialog" v-model="setPwdShow" :title="$t('changePassword')" @closed="resetUserForm">
       <div class="dialog-box">
         <el-input v-model="userForm.password" type="password" :placeholder="$t('newPassword')" autocomplete="off" @keyup.enter="updatePwd">
@@ -377,6 +379,8 @@
 </template>
 
 <script setup>
+import AccountForward from "@/components/account-forward/index.vue";
+const forwardRef = ref();
 import {defineOptions, h, reactive, ref, watch} from 'vue'
 import {
   userList,
