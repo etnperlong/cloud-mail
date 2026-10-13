@@ -14,7 +14,7 @@
           <Icon icon="material-symbols-light:close-rounded" width="22" height="22"/>
         </div>
       </div>
-      <div class="container">
+      <div class="container" :style="{gridTemplateRows: `repeat(${headRows}, auto) 1fr auto`}">
         <el-input-tag  @add-tag="addTagChange" tag-type="primary" @input="inputChange" size="default" v-model="form.receiveEmail" >
           <template #prefix>
             <div class="item-title" >{{ $t('recipient') }}</div>
@@ -38,9 +38,21 @@
             </el-select>
           </template>
           <template #suffix>
-            <div style="display: flex;margin-right: 3px;">
+            <div style="display: flex;margin-right: 3px;align-items: center;">
+              <span class="cc-toggle" v-if="!ccVisible" @click.stop="showCc = true">{{ $t('cc') }}</span>
+              <span class="cc-toggle" v-if="!bccVisible" @click.stop="showBcc = true">{{ $t('bcc') }}</span>
               <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts" />
             </div>
+          </template>
+        </el-input-tag>
+        <el-input-tag v-if="ccVisible" @add-tag="val => addExtraTag('cc', val)" tag-type="primary" size="default" v-model="form.cc">
+          <template #prefix>
+            <div class="item-title">{{ $t('cc') }}</div>
+          </template>
+        </el-input-tag>
+        <el-input-tag v-if="bccVisible" @add-tag="val => addExtraTag('bcc', val)" tag-type="primary" size="default" v-model="form.bcc">
+          <template #prefix>
+            <div class="item-title">{{ $t('bcc') }}</div>
           </template>
         </el-input-tag>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
@@ -118,6 +130,7 @@ import {ElMessageBox} from "element-plus";
 defineExpose({
   open,
   openReply,
+  openReplyAll,
   openForward,
   openDraft
 })
@@ -141,6 +154,7 @@ const mySelect = ref()
 let selectStatus = false
 const backReply = reactive({
   receiveEmail: [],
+  cc: [],
   subject: '',
   content: '',
   sendType: ''
@@ -148,6 +162,8 @@ const backReply = reactive({
 const form = reactive({
   sendEmail: '',
   receiveEmail: [],
+  cc: [],
+  bcc: [],
   accountId: -1,
   name: '',
   subject: '',
@@ -160,6 +176,12 @@ const form = reactive({
 })
 
 const selectRecipientList = ref([])
+const showCc = ref(false)
+const showBcc = ref(false)
+const ccVisible = computed(() => showCc.value || form.cc.length > 0)
+const bccVisible = computed(() => showBcc.value || form.bcc.length > 0)
+//收件人、抄送、密送、主题这几行的数量，用于 grid 布局
+const headRows = computed(() => 2 + (ccVisible.value ? 1 : 0) + (bccVisible.value ? 1 : 0))
 
 const contacts = computed(() => writerStore.sendRecipientRecord.map(item => ({email: item})))
 
@@ -248,6 +270,17 @@ function addTagChange(val) {
     }
   })
   if (selectStatus && has) openSelect()
+}
+
+//抄送/密送输入：和收件人一样支持逗号分隔粘贴，并过滤非法邮箱
+function addExtraTag(key, val) {
+  const list = form[key]
+  list.splice(list.length - 1, 1)
+  val.split(/[,，]/).map(item => item.trim()).filter(item => item).forEach(email => {
+    if (isEmail(email) && !list.includes(email)) {
+      list.push(email)
+    }
+  })
 }
 
 function clearContent() {
@@ -374,6 +407,8 @@ async function sendEmail() {
       form.subject = ''
       form.content = ''
       form.receiveEmail = []
+      form.cc = []
+      form.bcc = []
       draftStore.setDraft = {...toRaw(form)}
     }
 
@@ -400,16 +435,21 @@ async function sendEmail() {
 }
 
 function addRecipientRecord() {
+  const recipients = [...new Set([...form.receiveEmail, ...form.cc, ...form.bcc])]
   writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.filter(
-      email => !form.receiveEmail.includes(email)
+      email => !recipients.includes(email)
   );
 
-  writerStore.sendRecipientRecord.unshift(...form.receiveEmail);
+  writerStore.sendRecipientRecord.unshift(...recipients);
   writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.slice(0, 500);
 }
 
 function resetForm() {
   form.receiveEmail = []
+  form.cc = []
+  form.bcc = []
+  showCc.value = false
+  showBcc.value = false
   form.subject = ''
   form.content = ''
   form.manyType = null
@@ -420,6 +460,7 @@ function resetForm() {
   backReply.content = ''
   backReply.subject = ''
   backReply.receiveEmail = []
+  backReply.cc = []
   backReply.sendType = ''
   editor.value.clearEditor()
 }
@@ -452,20 +493,62 @@ function openForward(email) {
     nextTick(() => {
       backReply.content = editor.value.getContent()
       backReply.subject = form.subject
-      backReply.receiveEmail = form.receiveEmail
+      backReply.receiveEmail = [...form.receiveEmail]
       backReply.sendType = form.sendType
     })
 
   });
 }
 
-function openReply(email) {
+function openReplyAll(email) {
+  openReply(email, true)
+}
+
+//解析 recipient/cc 字段（JSON 字符串，postal-mime 格式，可能包含 group）为地址数组
+function parseAddresses(value) {
+  let list = []
+  try {
+    list = typeof value === 'string' ? JSON.parse(value) : (value || [])
+  } catch {
+    return []
+  }
+  if (!Array.isArray(list)) return []
+  return list.flatMap(item => item?.group ? item.group : [item]).map(item => item?.address).filter(Boolean)
+}
+
+function currentSendEmail() {
+  return accountStore.currentAccount.email || userStore.user.email
+}
+
+function openReply(email, replyAll = false) {
 
   resetForm();
 
   email.subject = email.subject || ''
 
-  form.receiveEmail.push(email.sendEmail)
+  const myEmail = currentSendEmail()?.toLowerCase()
+  const isMine = email.sendEmail?.toLowerCase() === myEmail
+
+  if (replyAll && isMine) {
+    //回复全部自己发出的邮件：沿用原收件人和抄送
+    form.receiveEmail.push(...parseAddresses(email.recipient))
+    form.cc.push(...parseAddresses(email.cc).filter(item => !form.receiveEmail.includes(item)))
+  } else {
+    form.receiveEmail.push(email.sendEmail)
+  }
+
+  if (replyAll && !isMine) {
+    //回复全部：原收件人和抄送都放进抄送，去掉自己和发件人
+    const exclude = new Set([myEmail, email.sendEmail?.toLowerCase()])
+    const ccList = [...parseAddresses(email.recipient), ...parseAddresses(email.cc)]
+    ccList.forEach(item => {
+      if (!exclude.has(item.toLowerCase())) {
+        exclude.add(item.toLowerCase())
+        form.cc.push(item)
+      }
+    })
+  }
+
   form.subject = (
       email.subject.startsWith('Re:') ||
       email.subject.startsWith('Re：') ||
@@ -493,7 +576,8 @@ function openReply(email) {
     nextTick(() => {
       backReply.content = editor.value.getContent()
       backReply.subject = form.subject
-      backReply.receiveEmail = form.receiveEmail
+      backReply.receiveEmail = [...form.receiveEmail]
+      backReply.cc = [...form.cc]
       backReply.sendType = form.sendType
     })
   })
@@ -522,6 +606,8 @@ function open() {
 
 function openDraft(draft) {
   Object.assign(form, {...draft})
+  form.cc = draft.cc || []
+  form.bcc = draft.bcc || []
   defValue.value = ''
   setTimeout(() => defValue.value = form.content)
   show.value = true;
@@ -557,7 +643,7 @@ function close() {
     return;
   }
 
-  if (!(form.content || form.subject || form.receiveEmail.length > 0)) {
+  if (!(form.content || form.subject || form.receiveEmail.length > 0 || form.cc.length > 0 || form.bcc.length > 0)) {
     show.value = false
     resetForm()
     return;
@@ -566,11 +652,12 @@ function close() {
   if (backReply.sendType === 'reply' || backReply.sendType === 'forward') {
     let subjectFlag = form.subject === backReply.subject
     let contentFlag = editor.value.getContent() === backReply.content
-    let receiveFlag = form.receiveEmail.length === 1 && form.receiveEmail[0] === backReply.receiveEmail[0]
+    let receiveFlag = form.receiveEmail.length > 0 && form.receiveEmail.join(',') === backReply.receiveEmail.join(',')
     if (backReply.sendType === 'forward' && form.receiveEmail.length === 0) {
       receiveFlag = true;
     }
-    if (subjectFlag && contentFlag && receiveFlag) {
+    let ccFlag = form.cc.join(',') === backReply.cc.join(',') && form.bcc.length === 0
+    if (subjectFlag && contentFlag && receiveFlag && ccFlag) {
       resetForm();
       close()
       return;
@@ -767,6 +854,18 @@ function close() {
 
 .add-contact {
   color: var(--regular-text-color)
+}
+
+.cc-toggle {
+  color: var(--regular-text-color);
+  cursor: pointer;
+  margin-right: 10px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.cc-toggle:hover {
+  color: var(--el-color-primary);
 }
 
 .write-select {
