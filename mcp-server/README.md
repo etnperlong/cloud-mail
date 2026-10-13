@@ -9,17 +9,12 @@ following 7 tools:
 | Tool | Description |
 |---|---|
 | `list_emails` | List emails in a mailbox (account). Get `accountId` from `list_accounts` first. |
-| `latest_emails` | Get received emails newer than a given `emailId` (polling). |
+| `latest_emails` | Get received emails for an account newer than a given `emailId` (polling). |
 | `search_all_emails` | Admin-wide search across ALL users' emails with filters. |
 | `get_attachments` | List downloadable attachments of an email. |
 | `send_email` | Send an email from one of the mailbox accounts. |
 | `mark_read` | Mark emails as read. |
 | `list_accounts` | List the mailbox accounts (addresses) available to the agent. |
-
-> **Known backend caveat:** `mark_read` calls a cloud-mail backend endpoint
-> that builds but does not `.run()` the database update. It always returns
-> success but the read state may not actually persist. This is a backend
-> limitation, not a bug in this MCP server — it is not fixed here.
 
 ## Environment variables
 

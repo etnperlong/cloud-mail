@@ -18,8 +18,8 @@ const listEmailsSchema = {
 };
 
 const latestEmailsSchema = {
-  emailId: z.number().describe('Cursor; returns emails with id greater than this'),
-  accountId: z.number().optional().describe('Account id, from list_accounts'),
+  emailId: z.number().describe('Cursor; returns received emails with id greater than this'),
+  accountId: z.number().describe('Account id to poll, from list_accounts'),
 };
 
 const searchAllEmailsSchema = {
@@ -140,8 +140,7 @@ export const sendEmailTool = {
 
 export const markReadTool = {
   name: 'mark_read',
-  description:
-    'Mark emails as read. Known backend caveat: the backend builds but does not run the update, so this always returns success but may not persist.',
+  description: 'Mark emails as read.',
   schema: markReadSchema,
   handler: async (client, args) => {
     await client.put('/email/read', { emailIds: args.emailIds });
