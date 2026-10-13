@@ -4,19 +4,27 @@
       <hanburger @click="changeAside"></hanburger>
       <span class="breadcrumb-item">{{ $t(route.meta.title) }}</span>
     </div>
-    <div v-perm="'email:send'" class="writer-box" @click="openSend">
+    <div v-perm="'email:send'" class="writer-box" role="button" tabindex="0"
+         :aria-label="$t('writeEmail')" @click="openSend"
+         @keydown.enter.prevent="openSend" @keydown.space.prevent="openSend">
       <div class="writer">
         <Icon icon="material-symbols:edit-outline-sharp" width="22" height="22"/>
       </div>
     </div>
     <div class="toolbar">
-      <div v-if="uiStore.dark" class="sun-icon icon-item" @click="openDark($event)">
+      <div v-if="uiStore.dark" class="sun-icon icon-item" role="button" tabindex="0"
+           :aria-label="$t('toggleTheme')" @click="openDark($event)"
+           @keydown.enter.prevent="openDark($event)" @keydown.space.prevent="openDark($event)">
         <Icon icon="mingcute:sun-fill"/>
       </div>
-      <div v-else class="dark-icon icon-item" @click="openDark($event)">
+      <div v-else class="dark-icon icon-item" role="button" tabindex="0"
+           :aria-label="$t('toggleTheme')" @click="openDark($event)"
+           @keydown.enter.prevent="openDark($event)" @keydown.space.prevent="openDark($event)">
         <Icon icon="solar:moon-linear"/>
       </div>
-      <div class="notice icon-item" @click="openNotice">
+      <div class="notice icon-item" role="button" tabindex="0"
+           :aria-label="$t('notice')" @click="openNotice"
+           @keydown.enter.prevent="openNotice" @keydown.space.prevent="openNotice">
         <Icon icon="streamline-plump:announcement-megaphone"/>
       </div>
       <el-dropdown ref="userinfoRef" @visible-change="e => userInfoShow = e" :teleported="false" popper-class="detail-dropdown">

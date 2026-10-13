@@ -13,10 +13,12 @@
                :type="'send'"
   >
     <template #first>
-      <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-down-outline"
-            v-if="params.timeSort === 0" width="28" height="28"/>
-      <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-up-outline" v-else
-            width="28" height="28"/>
+      <IconButton :label="$t('sort')" class="icon" @click="changeTimeSort" v-if="params.timeSort === 0">
+        <Icon icon="material-symbols-light:timer-arrow-down-outline" width="28" height="28"/>
+      </IconButton>
+      <IconButton :label="$t('sort')" class="icon" @click="changeTimeSort" v-else>
+        <Icon icon="material-symbols-light:timer-arrow-up-outline" width="28" height="28"/>
+      </IconButton>
     </template>
   </emailScroll>
 </template>

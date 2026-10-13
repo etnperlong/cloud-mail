@@ -1,14 +1,24 @@
 <template>
   <div class="box">
     <div class="header-actions">
-      <Icon class="icon" icon="material-symbols-light:arrow-back-ios-new" width="20" height="20" @click="handleBack"/>
-      <Icon v-perm="'email:delete'" class="icon" icon="uiw:delete" width="16" height="16" @click="handleDelete"/>
-      <span class="star" v-if="emailStore.contentData.showStar">
-        <Icon class="icon" @click="changeStar" v-if="email.isStar" icon="fluent-color:star-16" width="20" height="20"/>
-        <Icon class="icon" @click="changeStar" v-else icon="solar:star-line-duotone" width="18" height="18"/>
-      </span>
-      <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="la:reply" width="21" height="21" />
-      <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
+      <IconButton :label="$t('back')" class="icon" @click="handleBack">
+        <Icon icon="material-symbols-light:arrow-back-ios-new" width="20" height="20"/>
+      </IconButton>
+      <IconButton v-perm="'email:delete'" :label="$t('delete')" class="icon" @click="handleDelete">
+        <Icon icon="uiw:delete" width="16" height="16"/>
+      </IconButton>
+      <IconButton v-if="emailStore.contentData.showStar" :label="$t('star')" class="icon" @click="changeStar">
+        <Icon v-if="email.isStar" icon="fluent-color:star-16" width="20" height="20"/>
+        <Icon v-else icon="solar:star-line-duotone" width="18" height="18"/>
+      </IconButton>
+      <IconButton v-if="emailStore.contentData.showReply" v-perm="'email:send'" :label="$t('reply')" class="icon"
+                 @click="openReply">
+        <Icon icon="la:reply" width="21" height="21"/>
+      </IconButton>
+      <IconButton v-if="emailStore.contentData.showReply" v-perm="'email:send'" :label="$t('forward')" class="icon"
+                 @click="openForward">
+        <Icon icon="iconoir:arrow-up-right" width="20" height="20"/>
+      </IconButton>
     </div>
     <div></div>
     <el-scrollbar class="scrollbar">
@@ -54,7 +64,9 @@
                 </div>
                 <div class="att-size">{{ formatBytes(att.size) }}</div>
                 <div class="opt-icon att-icon">
-                  <Icon v-if="isImage(att.filename)" icon="hugeicons:view" width="22" height="22" @click="showImage(att.key)"/>
+                  <IconButton v-if="isImage(att.filename)" :label="$t('preview')" @click="showImage(att.key)">
+                    <Icon icon="hugeicons:view" width="22" height="22"/>
+                  </IconButton>
                   <a :href="cvtR2Url(att.key)" download>
                     <Icon icon="system-uicons:push-down" width="22" height="22"/>
                   </a>

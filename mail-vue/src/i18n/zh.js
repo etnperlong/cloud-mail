@@ -359,5 +359,13 @@ const zh = {
     clientId: '客户端 ID',
     clientSecret: '客户端密钥',
     notOwner: '基础邮箱不属于您',
+    refresh: '刷新',
+    search: '搜索',
+    back: '返回',
+    sort: '按时间排序',
+    writeEmail: '写邮件',
+    toggleTheme: '切换主题',
+    notice: '通知',
+    toggleMenu: '切换菜单',
 }
 export default zh

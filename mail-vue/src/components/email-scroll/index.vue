@@ -11,19 +11,24 @@
       <div class="header-left" :style="'padding-left:' + actionLeft">
 
         <slot name="first"></slot>
-        <Icon class="icon reload" icon="ion:reload" width="18" height="18" @click="refresh"/>
-        <Icon v-perm="'email:delete'" class="icon delete" icon="uiw:delete" width="16" height="16"
-              v-if="getSelectedMailsIds().length > 0"
-              @click="handleDelete"/>
-        <Icon v-perm="'email:delete'" class="icon delete" icon="fluent:mail-read-20-regular" width="21" height="21"
-              v-if="getSelectedMailsIds().length > 0 && showUnread"
-              @click="handleRead"/>
+        <IconButton :label="$t('refresh')" @click="refresh">
+          <Icon class="icon reload" icon="ion:reload" width="18" height="18"/>
+        </IconButton>
+        <IconButton v-perm="'email:delete'" :label="$t('delete')" v-if="getSelectedMailsIds().length > 0"
+                    @click="handleDelete">
+          <Icon class="icon delete" icon="uiw:delete" width="16" height="16"/>
+        </IconButton>
+        <IconButton v-perm="'email:delete'" :label="$t('markAsRead')"
+                    v-if="getSelectedMailsIds().length > 0 && showUnread" @click="handleRead">
+          <Icon class="icon delete" icon="fluent:mail-read-20-regular" width="21" height="21"/>
+        </IconButton>
       </div>
 
       <div class="header-right">
         <span class="email-count" v-if="total">{{ $t('emailCount', {total: total}) }}</span>
-        <Icon v-if="showAccountIcon" class="more-icon icon" width="16" height="16" icon="akar-icons:dot-grid-fill"
-              @click="changeAccountShow"/>
+        <IconButton v-if="showAccountIcon" :label="$t('account')" class="more-icon" @click="changeAccountShow">
+          <Icon class="icon" width="16" height="16" icon="akar-icons:dot-grid-fill"/>
+        </IconButton>
       </div>
     </div>
 
@@ -49,7 +54,9 @@
                            v-model="item.checked"
                            :disabled="!item.checked && isSelectMax"
                            @click.stop></el-checkbox>
-              <div @click.stop="starChange(item)" class="pc-star" v-if="showStar">
+              <div @click.stop="starChange(item)" @keydown.enter.stop.prevent="starChange(item)"
+                   @keydown.space.stop.prevent="starChange(item)"
+                   role="button" tabindex="0" :aria-label="t('star')" class="pc-star" v-if="showStar">
                 <Icon v-if="item.isStar" icon="fluent-color:star-16" width="20" height="20"/>
                 <Icon v-else icon="solar:star-line-duotone" width="18" height="18"/>
               </div>
@@ -83,8 +90,13 @@
                   <div class="email-text">
                     <span class="email-subject" :style="(item.unread === EmailUnreadEnum.UNREAD && showUnread)  ? 'font-weight: bold' : ''">
                       <div class="unread" v-if="!isMobile && (item.unread === EmailUnreadEnum.UNREAD && showUnread) "/>
-                      <span v-if="item.code" class="code-tag" @click.stop="copyCode(item.code)">[{{ t('codeLabel') }}{{ item.code }}]</span>
-                      <span class="subject-text">
+                      <span v-if="item.code" class="code-tag" role="button" tabindex="0"
+                            :aria-label="t('copyCode')" @click.stop="copyCode(item.code)"
+                            @keydown.enter.stop.prevent="copyCode(item.code)"
+                            @keydown.space.stop.prevent="copyCode(item.code)">[{{ t('codeLabel') }}{{ item.code }}]</span>
+                      <span class="subject-text" tabindex="0" role="link" :aria-label="item.subject || ''"
+                            @keydown.enter.stop.prevent="jumpDetails(item)"
+                            @keydown.space.stop.prevent="jumpDetails(item)">
                         <slot name="subject" :email="item" >
                           {{ item.subject || '\u200B' }}
                         </slot>

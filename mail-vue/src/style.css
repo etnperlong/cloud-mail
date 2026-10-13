@@ -55,8 +55,23 @@ button, input, select, textarea {
     background: none;
 }
 
-*:focus {
-    outline: none;
+/* 无障碍：仅在键盘聚焦时显示可见焦点环，鼠标点击不显示 */
+*:focus-visible {
+    outline: 2px solid var(--el-color-primary, #409eff);
+    outline-offset: 2px;
+}
+
+.el-button:focus,
+.el-button:focus-visible,
+.el-dropdown-menu__item:focus-visible {
+    outline: 2px solid var(--el-color-primary, #409eff);
+    outline-offset: 1px;
+}
+
+/* Element Plus 复选框的原生 input 是 0×0 透明元素，焦点环作用于其可视的 inner 上 */
+.el-checkbox__input:focus-visible .el-checkbox__inner,
+.el-checkbox__original:focus-visible + .el-checkbox__inner {
+    box-shadow: 0 0 0 2px var(--el-color-primary, #409eff);
 }
 
 .el-message {
