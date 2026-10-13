@@ -5,7 +5,11 @@
 ## 配置与升级
 
 1. 为目标 Cloudflare 账号创建 API Token，授予账号级 **Email Routing Addresses Write** 权限（控制台中为 Email Routing Addresses 的 Edit）。该权限支持创建、删除和列表查询；此功能不需要修改域名路由规则的权限。
-2. 由于部署使用 `wrangler-action.toml` 且未启用 `keep_vars`，请把 `cf_account_id` 和 `cf_api_token` 都设为 Worker secrets：在 `mail-worker` 目录中运行 `pnpm wrangler secret put cf_account_id --name <deployed-worker-name>` 和 `pnpm wrangler secret put cf_api_token --name <deployed-worker-name>`，或在 Cloudflare Dashboard 的 Worker Variables and Secrets 中添加为 Secret。代码分别从 `c.env.cf_account_id` 和 `c.env.cf_api_token` 读取；Wrangler 部署会保留已有 secrets。可选 `forward_max_addresses` 为正整数，默认 `3`；如需在部署后持续保留该值，也可设为 secret。降低上限不会删除原有记录，但收信只尝试上限内的已验证地址。
+2. 由于部署使用 `wrangler-action.toml` 且未启用 `keep_vars`，`cf_account_id` 和 `cf_api_token` 必须作为 Worker secrets 提供（代码分别从 `c.env.cf_account_id` 和 `c.env.cf_api_token` 读取；部署不会删除已有 secrets）。任选一种方式：
+   - **GitHub Actions（推荐）**：在仓库 Settings → Secrets and variables → Actions 中添加 secret `CF_API_TOKEN`；`CF_ACCOUNT_ID` 可选，未设置时使用部署用的 `CLOUDFLARE_ACCOUNT_ID`。可选 `FORWARD_MAX_ADDRESSES`（secret 或 variable）。部署步骤会通过 `wrangler deploy --secrets-file` 把它们与本次部署一起上传为 Worker secrets；未设置的项不会上传，也不会覆盖已有值。
+   - **手动**：在 `mail-worker` 目录中运行 `pnpm wrangler secret put cf_account_id --name <deployed-worker-name>` 和 `pnpm wrangler secret put cf_api_token --name <deployed-worker-name>`，或在 Cloudflare Dashboard 的 Worker Variables and Secrets 中添加为 Secret。
+
+   `cf_api_token` 会进入 Worker 运行时，不要复用部署用的 `CLOUDFLARE_API_TOKEN`（权限过大），应单独创建只含上一步权限的 token。可选 `forward_max_addresses` 为正整数，默认 `3`；降低上限不会删除原有记录，但收信只尝试上限内的已验证地址。
 3. 按项目原流程构建前端并发布 Worker。凭据缺失时禁止添加和重发，界面显示“未配置”；仍允许删除本地转发关联，原收信流程不受影响。
 4. 请求现有初始化入口 `GET https://<站点域名>/api/init/<jwt_secret>`，响应应为 `success`。`v3_3UserForwardDB` 在原升级链之后创建表、索引和权限，可以重复运行；失败不会被吞掉或报告成功。此入口包含敏感 JWT secret，应按现有运维方式使用。
 5. 管理员在“权限控制”中为需要使用的角色勾选“邮箱侧栏 → 邮箱转发”，权限 key 为 `account:forward`。升级不自动授权已有角色，也不会重新授予已撤销权限。用户刷新页面或重新登录以更新入口。
