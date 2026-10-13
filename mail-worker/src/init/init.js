@@ -32,7 +32,7 @@ const dbInit = {
 		await this.v3_1DB(c);
 		await this.v3_2DB(c);
 		await this.v3_3DB(c);
-		await this.v3_4DB(c);
+		await this.v3_3LoginDescriptionDB(c);
 		await this.v3_3UserForwardDB(c);
 		await settingService.refresh(c);
 		return c.text('success');
@@ -78,7 +78,7 @@ const dbInit = {
 		}
 	},
 
-	async v3_4DB(c) {
+	async v3_3LoginDescriptionDB(c) {
 		try {
 			await c.env.db.batch([
 				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN login_description TEXT NOT NULL DEFAULT '';`),
