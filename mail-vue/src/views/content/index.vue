@@ -15,6 +15,10 @@
                  @click="openReply">
         <Icon icon="la:reply" width="21" height="21"/>
       </IconButton>
+      <IconButton v-if="emailStore.contentData.showReply" v-perm="'email:send'" :label="$t('replyAll')" class="icon"
+                 @click="openReplyAll">
+        <Icon icon="mdi:reply-all-outline" width="21" height="21"/>
+      </IconButton>
       <IconButton v-if="emailStore.contentData.showReply" v-perm="'email:send'" :label="$t('forward')" class="icon"
                  @click="openForward">
         <Icon icon="iconoir:arrow-up-right" width="20" height="20"/>
@@ -36,6 +40,8 @@
                 </div>
               </div>
               <div class="receive"><span class="source">{{$t('recipient')}}</span><span class="receive-email">{{  formateReceive(email.recipient) }}</span></div>
+              <div class="receive" v-if="formateReceive(email.cc)"><span class="source">{{$t('cc')}}</span><span class="receive-email">{{ formateReceive(email.cc) }}</span></div>
+              <div class="receive" v-if="formateReceive(email.bcc)"><span class="source">{{$t('bcc')}}</span><span class="receive-email">{{ formateReceive(email.bcc) }}</span></div>
               <div class="date">
                 <div>{{ formatDetailDate(email.createTime) }}</div>
               </div>
@@ -184,6 +190,10 @@ function openReply() {
   uiStore.writerRef.openReply(email.value)
 }
 
+function openReplyAll() {
+  uiStore.writerRef.openReplyAll(email.value)
+}
+
 function openForward() {
   uiStore.writerRef.openForward(email.value)
 }
@@ -212,8 +222,13 @@ function isImage(filename) {
 
 function formateReceive(recipient) {
   if (!recipient) return ''
-  recipient = JSON.parse(recipient)
-  return recipient.map(item => item.address).join(', ')
+  try {
+    recipient = JSON.parse(recipient)
+  } catch {
+    return ''
+  }
+  if (!Array.isArray(recipient)) return ''
+  return recipient.flatMap(item => item?.group ? item.group : [item]).map(item => item?.address).filter(Boolean).join(', ')
 }
 
 function changeStar() {

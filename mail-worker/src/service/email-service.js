@@ -23,6 +23,7 @@ import domainUtils from '../utils/domain-uitls';
 import account from "../entity/account";
 import { att } from '../entity/att';
 import telegramService from './telegram-service';
+import verifyUtils from '../utils/verify-utils';
 
 const emailService = {
 
@@ -255,11 +256,23 @@ const emailService = {
 			sendType, //发件类型
 			emailId, //邮件id，如果是回复邮件会带
 			receiveEmail, //收件人邮箱
+			cc = [], //抄送
+			bcc = [], //密送
 			text, //邮件纯文本
 			content, //邮件内容
 			subject, //邮件标题
 			attachments = [] //附件
 		} = params;
+
+		//收件人/抄送/密送：校验格式并跨栏去重
+		({ receiveEmail, cc, bcc } = this.normalizeRecipients(receiveEmail, cc, bcc));
+
+		if (receiveEmail.length === 0) {
+			throw new BizError(t('emptyRecipient'));
+		}
+
+		//所有接收方（收件人+抄送+密送），用于站内判断、权限和发送次数统计
+		const allRecipients = [...receiveEmail, ...cc, ...bcc];
 
 		const { resendTokens, r2Domain, send, domainList } = await settingService.query(c);
 
@@ -274,7 +287,7 @@ const emailService = {
 		const roleRow = await roleService.selectById(c, userRow.type);
 
 		//判断接收方是不是全部为站内邮箱
-		const allInternal = receiveEmail.every(email => {
+		const allInternal = allRecipients.every(email => {
 			const domain = '@' + emailUtils.getDomain(email);
 			return domainList.includes(domain);
 		});
@@ -301,7 +314,7 @@ const emailService = {
 				if (roleRow.sendType === 'count') throw new BizError(t('totalSendLimit'), 403);
 			}
 
-			if (userRow.sendCount + receiveEmail.length > roleRow.sendCount) {
+			if (userRow.sendCount + allRecipients.length > roleRow.sendCount) {
 				if (roleRow.sendType === 'day') throw new BizError(t('daySendLack'), 403);
 				if (roleRow.sendType === 'count') throw new BizError(t('totalSendLack'), 403);
 			}
@@ -365,6 +378,8 @@ const emailService = {
 					name,
 					accountEmail: accountRow.email,
 					receiveEmail,
+					cc,
+					bcc,
 					subject,
 					text,
 					html,
@@ -377,6 +392,8 @@ const emailService = {
 					name,
 					accountEmail: accountRow.email,
 					receiveEmail,
+					cc,
+					bcc,
 					subject,
 					text,
 					html,
@@ -420,6 +437,8 @@ const emailService = {
 		});
 
 		emailData.recipient = JSON.stringify(recipient);
+		emailData.cc = JSON.stringify(cc.map(item => ({ address: item, name: '' })));
+		emailData.bcc = JSON.stringify(bcc.map(item => ({ address: item, name: '' })));
 
 		if (sendType === 'reply') {
 			emailData.inReplyTo = emailRow.messageId;
@@ -428,7 +447,7 @@ const emailService = {
 
 		//如果权限有发送次数增加用户发送次数
 		if (roleRow.sendCount && roleRow.sendType !== 'internal') {
-			await userService.incrUserSendCount(c, receiveEmail.length, userId);
+			await userService.incrUserSendCount(c, allRecipients.length, userId);
 		}
 
 		//保存到数据库并返回结果
@@ -455,7 +474,7 @@ const emailService = {
 
 		//如果全是站内接收方，直接写入数据库
 		if (allInternal) {
-			await this.HandleOnSiteEmail(c, receiveEmail, emailResult, attList);
+			await this.HandleOnSiteEmail(c, allRecipients, emailResult, attList);
 		}
 
 		const dateStr = dayjs().format('YYYY-MM-DD');
@@ -463,13 +482,35 @@ const emailService = {
 
 		//记录每天发件次数统计
 		if (!daySendTotal) {
-			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(receiveEmail.length), { expirationTtl: 60 * 60 * 24 });
+			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(allRecipients.length), { expirationTtl: 60 * 60 * 24 });
 		} else  {
-			daySendTotal = Number(daySendTotal) + receiveEmail.length
+			daySendTotal = Number(daySendTotal) + allRecipients.length
 			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(daySendTotal), { expirationTtl: 60 * 60 * 24 });
 		}
 
 		return [ emailResult ];
+	},
+
+	//校验收件人/抄送/密送格式，同一地址只保留在优先级最高的一栏（收件人 > 抄送 > 密送）
+	normalizeRecipients(receiveEmail, cc, bcc) {
+		const seen = new Set();
+		const clean = (list) => {
+			if (!Array.isArray(list)) return [];
+			const result = [];
+			for (let item of list) {
+				item = String(item ?? '').trim();
+				if (!item) continue;
+				if (!verifyUtils.isEmail(item)) {
+					throw new BizError(`${t('notEmail')}: ${item}`);
+				}
+				const key = item.toLowerCase();
+				if (seen.has(key)) continue;
+				seen.add(key);
+				result.push(item);
+			}
+			return result;
+		};
+		return { receiveEmail: clean(receiveEmail), cc: clean(cc), bcc: clean(bcc) };
 	},
 
 	async sendByCloudflareEmail(c, params) {
@@ -478,6 +519,14 @@ const emailService = {
 			to: [...params.receiveEmail],
 			subject: params.subject
 		};
+
+		if (params.cc && params.cc.length > 0) {
+			sendForm.cc = params.cc;
+		}
+
+		if (params.bcc && params.bcc.length > 0) {
+			sendForm.bcc = params.bcc;
+		}
 
 		if (params.text) {
 			sendForm.text = params.text;
@@ -519,6 +568,14 @@ const emailService = {
 			html: params.html,
 			attachments: await this.toResendAttachments(params.attachments)
 		};
+
+		if (params.cc && params.cc.length > 0) {
+			sendForm.cc = params.cc;
+		}
+
+		if (params.bcc && params.bcc.length > 0) {
+			sendForm.bcc = params.bcc;
+		}
 
 		if (params.sendType === 'reply') {
 			sendForm.headers = {
@@ -682,6 +739,8 @@ const emailService = {
 			emailValues.toEmail = email;
 			emailValues.toName = emailUtils.getName(email);
 			emailValues.emailId = null;
+			//站内收件方不能看到密送名单
+			emailValues.bcc = '[]';
 
 			let accountRow = allAccounts.find(accountRow => accountRow.email === email);
 
