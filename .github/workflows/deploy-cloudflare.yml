@@ -209,9 +209,37 @@ jobs:
       - name: 🚀 开始部署 / Start deployment
         id: deploy
         working-directory: ./mail-worker
+        env:
+          # 邮箱自助转发（可选）/ Per-mailbox forwarding (optional)
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID || vars.CF_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          FORWARD_MAX_ADDRESSES: ${{ secrets.FORWARD_MAX_ADDRESSES || vars.FORWARD_MAX_ADDRESSES }}
         run: |
           echo "🚀 Starting deployment..."
-          pnpm wrangler deploy -c wrangler-action.toml 2>&1 \
+
+          # 仅上传已配置的值；未配置的 Worker secret 保持不变
+          # Upload only configured values; existing Worker secrets are never deleted by deploy
+          SECRETS_FILE="$RUNNER_TEMP/worker-secrets.json"
+          trap 'rm -f "$SECRETS_FILE"' EXIT
+          (umask 077 && jq -n \
+            --arg account "$CF_ACCOUNT_ID" \
+            --arg token "$CF_API_TOKEN" \
+            --arg max "$FORWARD_MAX_ADDRESSES" \
+            '(if $token != "" then {cf_account_id: $account, cf_api_token: $token} else {} end)
+             + (if $max != "" then {forward_max_addresses: $max} else {} end)' > "$SECRETS_FILE")
+
+          if [ -n "$CF_API_TOKEN" ] && [ -z "$CF_ACCOUNT_ID" ]; then
+            echo "❌ CF_API_TOKEN is set but no CF_ACCOUNT_ID / CLOUDFLARE_ACCOUNT_ID is available."
+            exit 1
+          fi
+
+          SECRETS_ARGS=()
+          if [ "$(jq length "$SECRETS_FILE")" -gt 0 ]; then
+            echo "🔐 Uploading Worker secrets: $(jq -r 'keys | join(", ")' "$SECRETS_FILE")"
+            SECRETS_ARGS=(--secrets-file "$SECRETS_FILE")
+          fi
+
+          pnpm wrangler deploy -c wrangler-action.toml "${SECRETS_ARGS[@]}" 2>&1 \
             | tee deploy.log \
             | grep -v "https://.*\.workers\.dev" \
             | sed -E 's/env\.domain .*/env.domain (***)/' \

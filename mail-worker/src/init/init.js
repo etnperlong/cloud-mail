@@ -33,8 +33,26 @@ const dbInit = {
 		await this.v3_2DB(c);
 		await this.v3_3DB(c);
 		await this.v3_4DB(c);
+		await this.v3_3UserForwardDB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v3_3UserForwardDB(c) {
+		await c.env.db.batch([
+			c.env.db.prepare(`CREATE TABLE IF NOT EXISTS account_forward (
+				forward_id INTEGER PRIMARY KEY AUTOINCREMENT,
+				account_id INTEGER NOT NULL REFERENCES account(account_id) ON DELETE CASCADE,
+				email TEXT NOT NULL COLLATE NOCASE,
+				verified TEXT,
+				last_requested INTEGER NOT NULL DEFAULT 0
+			)`),
+			c.env.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_account_forward_email ON account_forward(account_id, email)`),
+			// Reserve fork-local permission IDs above upstream's explicit 1-36 range.
+			c.env.db.prepare(`INSERT INTO perm (perm_id, name, perm_key, pid, type, sort)
+				SELECT 1001, '邮箱转发', 'account:forward', 21, 2, 3
+				WHERE NOT EXISTS (SELECT 1 FROM perm WHERE perm_key = 'account:forward')`)
+		]);
 	},
 
 	async v3_3DB(c) {

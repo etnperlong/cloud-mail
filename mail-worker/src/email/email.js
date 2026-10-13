@@ -1,3 +1,4 @@
+import accountForwardService from '../service/account-forward-service';
 import PostalMime from 'postal-mime';
 import emailService from '../service/email-service';
 import accountService from '../service/account-service';
@@ -158,6 +159,8 @@ export async function email(message, env, ctx) {
 
 		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId);
 
+
+		await accountForwardService.forward({ env }, message, account);
 
 		if (ruleType === settingConst.ruleType.RULE) {
 

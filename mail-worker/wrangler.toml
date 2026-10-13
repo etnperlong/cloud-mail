@@ -36,6 +36,9 @@ crons = ["0 * * * *"]	#每小时执行；resetDaySendCount 仅在 UTC 0 点生�
 
 
 [vars]
+#cf_account_id is stored as the Worker secret cf_account_id (see doc/user-forward.md)
+#forward_max_addresses = 3	#每个邮箱的转发地址上限
+#cf_api_token is stored as the Worker secret cf_api_token
 #ai_model = ""			#ai模型,不填默认使用@cf/meta/llama-3.1-8b-instruct-fast
 #analysis_cache = false			#是否开启分析数据缓存
 #orm_log = false			#是否sql日志

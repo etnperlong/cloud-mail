@@ -1,3 +1,4 @@
+import accountForwardService from '../service/account-forward-service';
 import app from '../hono/hono';
 import userService from '../service/user-service';
 import result from '../model/result';
@@ -55,3 +56,7 @@ app.delete('/user/deleteAccount', async (c) => {
 });
 
 
+
+app.get('/user/forward', async (c) => {
+	return c.json(result.ok(await accountForwardService.adminList(c, c.req.query())));
+});

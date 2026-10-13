@@ -1,3 +1,5 @@
+import accountForward from '../entity/account-forward';
+import cfAddressService from './cf-address-service';
 import BizError from '../error/biz-error';
 import verifyUtils from '../utils/verify-utils';
 import emailUtils from '../utils/email-utils';
@@ -12,6 +14,16 @@ import turnstileService from './turnstile-service';
 import roleService from './role-service';
 import { t } from '../i18n/i18n';
 import verifyRecordService from './verify-record-service';
+
+async function cleanupForwardDestinations(c, rows) {
+	for (const email of new Set(rows.map(row => row.email))) {
+		try {
+			await cfAddressService.deleteIfUnreferenced(c, email);
+		} catch (error) {
+			console.error('删除邮箱时清理 Cloudflare 转发目标失败:', error);
+		}
+	}
+}
 
 const accountService = {
 
@@ -191,8 +203,19 @@ const accountService = {
 	},
 
 	async physicsDeleteByUserIds(c, userIds) {
+		let forwardingRows = [];
+		if (userIds.length && cfAddressService.configured(c)) {
+			try {
+				forwardingRows = await orm(c).select({ email: accountForward.email }).from(accountForward)
+					.innerJoin(account, eq(account.accountId, accountForward.accountId))
+					.where(inArray(account.userId, userIds)).all();
+			} catch (error) {
+				console.error('读取邮箱转发记录失败:', error);
+			}
+		}
 		await emailService.physicsDeleteUserIds(c, userIds);
-		await orm(c).delete(account).where(inArray(account.userId,userIds)).run();
+		await orm(c).delete(account).where(inArray(account.userId, userIds)).run();
+		await cleanupForwardDestinations(c, forwardingRows);
 	},
 
 	async selectUserAccountCountList(c, userIds, del = isDel.NORMAL) {
@@ -255,9 +278,19 @@ const accountService = {
 	},
 
 	async physicsDelete(c, params) {
-		const { accountId } = params
-		await emailService.physicsDeleteByAccountId(c, accountId)
+		const { accountId } = params;
+		let forwardingRows = [];
+		if (cfAddressService.configured(c)) {
+			try {
+				forwardingRows = await orm(c).select({ email: accountForward.email }).from(accountForward)
+					.where(eq(accountForward.accountId, accountId)).all();
+			} catch (error) {
+				console.error('读取邮箱转发记录失败:', error);
+			}
+		}
+		await emailService.physicsDeleteByAccountId(c, accountId);
 		await orm(c).delete(account).where(eq(account.accountId, accountId)).run();
+		await cleanupForwardDestinations(c, forwardingRows);
 	},
 
 	async setAllReceive(c, params, userId) {
