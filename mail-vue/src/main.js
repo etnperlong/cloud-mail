@@ -10,9 +10,11 @@ import 'nprogress/nprogress.css';
 import perm from "@/perm/perm.js";
 const pinia = createPinia().use(piniaPersistedState)
 import i18n from "@/i18n/index.js";
+import IconButton from "@/components/IconButton.vue";
 const app = createApp(App).use(pinia)
 await init()
 app.use(router).use(i18n).directive('perm',perm)
+app.component('IconButton', IconButton)
 app.config.devtools = true;
 
 app.mount('#app');

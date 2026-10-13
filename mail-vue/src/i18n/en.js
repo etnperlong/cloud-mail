@@ -359,6 +359,14 @@ const en = {
     clientId: 'Client ID',
     clientSecret: 'Client Secret',
     notOwner: 'Base email does not belong to you',
+    refresh: 'Refresh',
+    search: 'Search',
+    back: 'Back',
+    sort: 'Sort by time',
+    writeEmail: 'Write email',
+    toggleTheme: 'Toggle theme',
+    notice: 'Notifications',
+    toggleMenu: 'Toggle menu',
 }
 
 export default en

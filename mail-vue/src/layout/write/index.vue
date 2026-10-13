@@ -39,26 +39,29 @@
           </template>
           <template #suffix>
             <div style="display: flex;margin-right: 3px;">
-              <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts" />
+              <IconButton :label="$t('selectContacts')" class="add-contact" @click.stop="openContacts">
+                <Icon icon="fa7-solid:user-plus" width="20" height="20"/>
+              </IconButton>
             </div>
           </template>
         </el-input-tag>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
         <tinyEditor :def-value="defValue" ref="editor" @change="change" @focus="focusChange" />
         <div class="button-item">
-          <div class="att-add" @click="chooseFile">
+          <IconButton :label="$t('attachments')" class="att-add" @click="chooseFile">
             <Icon icon="iconamoon:attachment-fill" width="24" height="24"/>
-          </div>
-          <div class="att-clear" @click="clearContent">
+          </IconButton>
+          <IconButton :label="$t('clear')" class="att-clear" @click="clearContent">
             <Icon icon="icon-park-outline:clear-format" width="24" height="24 "/>
-          </div>
+          </IconButton>
           <div class="att-list">
             <div class="att-item" v-for="(item,index) in form.attachments" :key="index">
               <Icon v-bind="getIconByName(item.filename)"/>
               <span class="att-filename">{{ item.filename }}</span>
               <span class="att-size">{{ formatBytes(item.size) }}</span>
-              <Icon style="cursor: pointer;" icon="material-symbols-light:close-rounded" @click="delAtt(index)"
-                    width="22" height="22"/>
+              <IconButton :label="$t('delete')" style="cursor: pointer;" @click="delAtt(index)">
+                <Icon icon="material-symbols-light:close-rounded" width="22" height="22"/>
+              </IconButton>
             </div>
           </div>
           <div>

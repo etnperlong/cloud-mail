@@ -1,7 +1,9 @@
 <template>
   <div class="reg-key">
     <div class="header-actions">
-      <Icon class="icon" icon="ion:add-outline" width="23" height="23" @click="openAdd"/>
+      <IconButton :label="$t('add')" class="icon" @click="openAdd">
+        <Icon icon="ion:add-outline" width="23" height="23"/>
+      </IconButton>
       <div class="search">
         <el-input
             v-model="params.code"
@@ -10,9 +12,15 @@
         >
         </el-input>
       </div>
-      <Icon class="icon" icon="iconoir:search" @click="search" width="20" height="20"/>
-      <Icon class="icon" icon="ion:reload" width="18" height="18" @click="refresh"/>
-      <Icon class="icon" icon="fluent:broom-sparkle-16-regular" width="22" height="22" @click="clearNotUse"/>
+      <IconButton :label="$t('search')" class="icon" @click="search">
+        <Icon icon="iconoir:search" width="20" height="20"/>
+      </IconButton>
+      <IconButton :label="$t('refresh')" class="icon" @click="refresh">
+        <Icon icon="ion:reload" width="18" height="18"/>
+      </IconButton>
+      <IconButton :label="$t('clear')" class="icon" @click="clearNotUse">
+        <Icon icon="fluent:broom-sparkle-16-regular" width="22" height="22"/>
+      </IconButton>
     </div>
 
     <el-scrollbar class="scrollbar">
@@ -24,7 +32,10 @@
           <div class="code-info">
             <div class="info-left">
               <div class="info-left-item">
-                <span class="code" @click="copyCode(item.code)">{{ item.code }}</span>
+                <span class="code" role="button" tabindex="0" :aria-label="$t('copy')"
+                      @click="copyCode(item.code)"
+                      @keydown.enter.stop.prevent="copyCode(item.code)"
+                      @keydown.space.stop.prevent="copyCode(item.code)">{{ item.code }}</span>
               </div>
               <div class="info-left-item">
                 <div>{{ $t('remainingUses') }}：</div>
@@ -64,7 +75,9 @@
       <div class="container">
         <el-input v-model="addForm.code" :placeholder="$t('regKey')" @keyup.enter="submit">
           <template #suffix>
-            <Icon @click.stop="genCode" class="gen-code" icon="bitcoin-icons:refresh-filled" width="24" height="24"/>
+            <IconButton :label="$t('refresh')" class="gen-code" @click.stop="genCode">
+              <Icon icon="bitcoin-icons:refresh-filled" width="24" height="24"/>
+            </IconButton>
           </template>
         </el-input>
         <el-select v-model="addForm.roleId" :placeholder="$t('roleDesc')">
