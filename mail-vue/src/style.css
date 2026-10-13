@@ -61,7 +61,6 @@ button, input, select, textarea {
     outline-offset: 2px;
 }
 
-.el-button:focus,
 .el-button:focus-visible,
 .el-dropdown-menu__item:focus-visible {
     outline: 2px solid var(--el-color-primary, #409eff);

@@ -7,7 +7,7 @@
       <IconButton v-perm="'email:delete'" :label="$t('delete')" class="icon" @click="handleDelete">
         <Icon icon="uiw:delete" width="16" height="16"/>
       </IconButton>
-      <IconButton v-if="emailStore.contentData.showStar" :label="$t('star')" class="icon" @click="changeStar">
+      <IconButton v-if="emailStore.contentData.showStar" :label="$t('star')" class="icon star" @click="changeStar">
         <Icon v-if="email.isStar" icon="fluent-color:star-16" width="20" height="20"/>
         <Icon v-else icon="solar:star-line-duotone" width="18" height="18"/>
       </IconButton>
