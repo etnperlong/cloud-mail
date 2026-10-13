@@ -47,8 +47,9 @@ const dbInit = {
 				last_requested INTEGER NOT NULL DEFAULT 0
 			)`),
 			c.env.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_account_forward_email ON account_forward(account_id, email)`),
-			c.env.db.prepare(`INSERT INTO perm (name, perm_key, pid, type, sort)
-				SELECT '邮箱转发', 'account:forward', 21, 2, 3
+			// Reserve fork-local permission IDs above upstream's explicit 1-36 range.
+			c.env.db.prepare(`INSERT INTO perm (perm_id, name, perm_key, pid, type, sort)
+				SELECT 1001, '邮箱转发', 'account:forward', 21, 2, 3
 				WHERE NOT EXISTS (SELECT 1 FROM perm WHERE perm_key = 'account:forward')`)
 		]);
 	},
