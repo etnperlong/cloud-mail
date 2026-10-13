@@ -1,3 +1,7 @@
+import { eq } from 'drizzle-orm';
+import orm from '../entity/orm';
+import accountForward from '../entity/account-forward';
+import setting from '../entity/setting';
 import BizError from '../error/biz-error';
 import { t } from '../i18n/i18n';
 
@@ -52,6 +56,15 @@ const cfAddressService = {
 	async delete(c, email) {
 		const address = (await this.list(c)).get(email.toLowerCase());
 		if (address?.id) await this.request(c, 'DELETE', `/${encodeURIComponent(address.id)}`);
+	},
+	async deleteIfUnreferenced(c, email) {
+		if (!this.configured(c)) return;
+		const remaining = await orm(c).select({ forwardId: accountForward.forwardId }).from(accountForward)
+			.where(eq(accountForward.email, email)).get();
+		if (remaining) return;
+		const { forwardEmail } = await orm(c).select({ forwardEmail: setting.forwardEmail }).from(setting).get() || {};
+		if (forwardEmail?.split(',').some(address => address.trim().toLowerCase() === email)) return;
+		await this.delete(c, email);
 	}
 };
 export default cfAddressService;

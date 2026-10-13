@@ -2,6 +2,7 @@ import { env } from 'cloudflare:test';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { dbInit } from '../src/init/init';
 import service from '../src/service/account-forward-service';
+import accountService from '../src/service/account-service';
 import app from '../src/hono/webs';
 import jwtUtils from '../src/utils/jwt-utils';
 import { email as receive } from '../src/email/email';
@@ -109,16 +110,38 @@ describe('mailbox forwarding with D1', () => {
 		expect(fetch).toHaveBeenCalledTimes(2);
 		expect(fetch.mock.calls[1][1].method).toBe('POST');
 	});
-	it('scopes deletion and cascades physical account deletion without affecting shared CF destinations', async () => {
+	it('cleans the CF destination when the last mailbox reference is purged', async () => {
+		fetch.mockImplementation(async (_url, options) => {
+			if (options.method === 'POST') return api({ id: 'cf-address-1', verified: 'verified' });
+			if (options.method === 'GET') return api([{ id: 'cf-address-1', email: 'dest@example.com', verified: 'verified' }], { total_pages: 1 });
+			if (options.method === 'DELETE') return api({ id: 'cf-address-1' });
+		});
 		await add('dest@example.com');
 		await add('dest@example.com', 2, 2);
 		const [first] = await service.rows(c, 1);
 		await service.remove(c, { accountId: 1, forwardId: first.forwardId }, 1);
 		expect(await service.rows(c, 1)).toHaveLength(0);
 		expect(await service.rows(c, 2)).toHaveLength(1);
-		await env.db.prepare('DELETE FROM account WHERE account_id = 2').run();
+		vi.spyOn(emailService, 'physicsDeleteByAccountId').mockResolvedValue();
+		await accountService.physicsDelete(c, { accountId: 2 });
 		expect(await service.rows(c, 2)).toHaveLength(0);
-		expect(fetch).toHaveBeenCalledTimes(2);
+		expect(fetch.mock.calls.map(([, options]) => options.method)).toEqual(['POST', 'POST', 'GET', 'DELETE']);
+		expect(fetch.mock.calls[3][0]).toContain('/email/routing/addresses/cf-address-1');
+	});
+	it('cleans the CF destination when a user purge removes the last mailbox reference', async () => {
+		fetch.mockImplementation(async (_url, options) => {
+			if (options.method === 'POST') return api({ id: 'cf-address-1', verified: 'verified' });
+			if (options.method === 'GET') return api([{ id: 'cf-address-1', email: 'dest@example.com', verified: 'verified' }], { total_pages: 1 });
+			if (options.method === 'DELETE') return api({ id: 'cf-address-1' });
+		});
+		await add('dest@example.com');
+		await add('dest@example.com', 2, 2);
+		const [first] = await service.rows(c, 1);
+		await service.remove(c, { accountId: 1, forwardId: first.forwardId }, 1);
+		vi.spyOn(emailService, 'physicsDeleteUserIds').mockResolvedValue();
+		await accountService.physicsDeleteByUserIds(c, [2]);
+		expect(await service.rows(c, 2)).toHaveLength(0);
+		expect(fetch.mock.calls.map(([, options]) => options.method)).toEqual(['POST', 'POST', 'GET', 'DELETE']);
 	});
 	it('deletes a CF destination after the last local mailbox reference', async () => {
 		fetch.mockImplementation(async (_url, options) => {
