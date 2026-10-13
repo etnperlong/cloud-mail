@@ -4,8 +4,8 @@
 
 ## 配置与升级
 
-1. 为目标 Cloudflare 账号创建 API Token，授予账号级 **Email Routing Addresses Write** 权限（控制台中为 Email Routing Addresses 的 Edit）。创建和列表接口均需可用；此功能不需要修改域名路由规则的权限。
-2. 在 Worker 设置 `cf_account_id` 变量，通过 `npx wrangler secret put cf_api_token` 写入 Token。可选变量 `forward_max_addresses` 为正整数，默认 `3`；降低上限不会删除原有记录，但收信只尝试上限内的已验证地址。
+1. 为目标 Cloudflare 账号创建 API Token，授予账号级 **Email Routing Addresses Write** 权限（控制台中为 Email Routing Addresses 的 Edit）。该权限支持创建、删除和列表查询；此功能不需要修改域名路由规则的权限。
+2. 由于部署使用 `wrangler-action.toml` 且未启用 `keep_vars`，请把 `cf_account_id` 和 `cf_api_token` 都设为 Worker secrets：在 `mail-worker` 目录中运行 `pnpm wrangler secret put cf_account_id --name <deployed-worker-name>` 和 `pnpm wrangler secret put cf_api_token --name <deployed-worker-name>`，或在 Cloudflare Dashboard 的 Worker Variables and Secrets 中添加为 Secret。代码分别从 `c.env.cf_account_id` 和 `c.env.cf_api_token` 读取；Wrangler 部署会保留已有 secrets。可选 `forward_max_addresses` 为正整数，默认 `3`；如需在部署后持续保留该值，也可设为 secret。降低上限不会删除原有记录，但收信只尝试上限内的已验证地址。
 3. 按项目原流程构建前端并发布 Worker。凭据缺失时禁止添加和重发，界面显示“未配置”；仍允许删除本地转发关联，原收信流程不受影响。
 4. 请求现有初始化入口 `GET https://<站点域名>/api/init/<jwt_secret>`，响应应为 `success`。`v3_3UserForwardDB` 在原升级链之后创建表、索引和权限，可以重复运行；失败不会被吞掉或报告成功。此入口包含敏感 JWT secret，应按现有运维方式使用。
 5. 管理员在“权限控制”中为需要使用的角色勾选“邮箱侧栏 → 邮箱转发”，权限 key 为 `account:forward`。升级不自动授权已有角色，也不会重新授予已撤销权限。用户刷新页面或重新登录以更新入口。
@@ -13,7 +13,7 @@
 
 生产发布、真实验证邮件和实际投递需要另行执行；本功能测试使用本地 D1 和模拟 Cloudflare API。
 
-[Cloudflare 创建目标地址 API](https://developers.cloudflare.com/api/resources/email_routing/subresources/addresses/methods/create/)；[目标地址列表 API](https://developers.cloudflare.com/api/resources/email_routing/subresources/addresses/methods/list/)。
+[Cloudflare 创建目标地址 API](https://developers.cloudflare.com/api/resources/email_routing/subresources/addresses/methods/create/)；[目标地址列表 API](https://developers.cloudflare.com/api/resources/email_routing/subresources/addresses/methods/list/)；[删除目标地址 API](https://developers.cloudflare.com/api/resources/email_routing/subresources/addresses/methods/delete/)。
 
 ## 数据与权限
 
@@ -51,7 +51,7 @@
 
 ## 限制与后续维护
 
-- CF 的目标验证属于整个账号。同一外部地址可以被多个邮箱使用；删除本地关联不删除 CF 地址，避免影响其他邮箱或管理员的全局转发。
+- CF 的目标验证属于整个账号。同一外部地址可以被多个邮箱使用；删除本地关联后，只有在没有其他本地转发记录或现有全局转发配置引用时，才尝试删除 CF 目标地址。CF 清理失败不会影响本地删除，也不会阻止后续全局转发。
 - “重新发送验证”重新 POST。CF 若返回地址已存在，系统查询并同步现有状态，不删除再创建共享目标，也不宣称已发送新邮件。未验证且无法重发时，应查找原验证邮件，或由管理员在 CF 控制台处理。
 - CF API 或定时任务失败时可能使用旧缓存；实际转发仍由 Cloudflare 检查目标是否允许。界面“已生效”表示缓存已验证，投递仍受角色权限、邮箱状态、域名配置以及 CF 投递限制影响。
 - 用户与全局转发独立执行，配置相同目标可能收到重复邮件。不会为去重而改变现有全局转发行为。
