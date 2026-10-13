@@ -1924,6 +1924,10 @@ function editSetting(settingForm, refreshStatus = true) {
     font-weight: normal;
   }
 }
+.dialog-label {
+  margin-bottom: 5px;
+  font-weight: 600;
+}
 
 .oauth-icon {
   width: 22px !important;

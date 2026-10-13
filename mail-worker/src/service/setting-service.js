@@ -196,8 +196,8 @@ const settingService = {
 		return {
 			register: settingRow.register,
 			title: settingRow.title,
-					loginDescription: settingRow.loginDescription,
-					registerDescription: settingRow.registerDescription,
+			loginDescription: settingRow.loginDescription,
+			registerDescription: settingRow.registerDescription,
 			manyEmail: settingRow.manyEmail,
 			addEmail: settingRow.addEmail,
 			autoRefresh: settingRow.autoRefresh,
