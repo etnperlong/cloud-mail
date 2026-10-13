@@ -29,7 +29,7 @@ const cfAddressService = {
 		for (let page = 1; ; page++) {
 			const data = await this.request(c, 'GET', `?per_page=50&page=${page}`);
 			if (!Array.isArray(data.result)) throw new BizError(t('forwardApiError'));
-			for (const row of data.result) addresses.set(row.email.toLowerCase(), row.verified || null);
+			for (const row of data.result) addresses.set(row.email.toLowerCase(), { id: row.id, verified: row.verified || null });
 			if (data.result.length < 50 || page >= data.result_info?.total_pages) break;
 		}
 		return addresses;
@@ -45,8 +45,13 @@ const cfAddressService = {
 			if (error.status !== 400 && error.status !== 409) throw error;
 			const addresses = await this.list(c);
 			if (!addresses.has(email)) throw error;
-			return { verified: addresses.get(email), sent: false };
+			return { verified: addresses.get(email).verified, sent: false };
 		}
+	},
+
+	async delete(c, email) {
+		const address = (await this.list(c)).get(email.toLowerCase());
+		if (address?.id) await this.request(c, 'DELETE', `/${encodeURIComponent(address.id)}`);
 	}
 };
 export default cfAddressService;

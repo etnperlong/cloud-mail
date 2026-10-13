@@ -10,6 +10,7 @@ import settingService from '../src/service/setting-service';
 import roleService from '../src/service/role-service';
 import telegramService from '../src/service/telegram-service';
 import webhookService from '../src/service/webhook-service';
+import permService from '../src/service/perm-service';
 import { settingConst } from '../src/const/entity-const';
 
 const c = { env: { ...env, db: env.db, domain: ['local.example'], cf_account_id: 'test-account', cf_api_token: 'test-token', admin: 'admin@local.example' } };
@@ -23,6 +24,7 @@ beforeEach(async () => {
 	await env.db.batch([
 		env.db.prepare('ALTER TABLE account ADD COLUMN all_receive INTEGER DEFAULT 0'),
 		env.db.prepare('ALTER TABLE account ADD COLUMN sort INTEGER DEFAULT 0'),
+		env.db.prepare("ALTER TABLE setting ADD COLUMN forward_email TEXT NOT NULL DEFAULT ''"),
 		env.db.prepare("INSERT INTO user (user_id, email, type, password, salt) VALUES (1, 'one@local.example', 1, '', ''), (2, 'two@local.example', 1, '', '')"),
 		env.db.prepare("INSERT INTO account (account_id, email, user_id) VALUES (1, 'one@local.example', 1), (2, 'two@local.example', 2), (3, 'alias@local.example', 1)")
 	]);
@@ -35,10 +37,17 @@ afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe('mailbox forwarding with D1', () => {
 	it('migration is repeatable and does not regrant revoked permissions', async () => {
 		await dbInit.v3_3UserForwardDB(c);
+		const perm = await env.db.prepare("SELECT perm_id, pid, type FROM perm WHERE perm_key = 'account:forward'").first();
+		expect(perm).toMatchObject({ perm_id: 1001, pid: 21, type: 2 });
 		expect(await env.db.prepare("SELECT count(*) AS n FROM perm WHERE perm_key = 'account:forward'").first('n')).toBe(1);
 		await env.db.prepare("DELETE FROM role_perm WHERE perm_id IN (SELECT perm_id FROM perm WHERE perm_key = 'account:forward')").run();
 		await dbInit.v3_3UserForwardDB(c);
 		expect(await env.db.prepare("SELECT count(*) AS n FROM role_perm WHERE perm_id IN (SELECT perm_id FROM perm WHERE perm_key = 'account:forward')").first('n')).toBe(0);
+		await dbInit.v1_4DB(c);
+		await dbInit.v1_5DB(c);
+		const adminRole = await env.db.prepare('SELECT role_id, name FROM role WHERE role_id = 1').first();
+		await roleService.setRole(c, { name: adminRole.name, roleId: adminRole.role_id, permIds: [1001], banEmail: [], availDomain: [] });
+		expect(await env.db.prepare("SELECT count(*) AS n FROM role_perm WHERE role_id = 1 AND perm_id = 1001").first('n')).toBe(1);
 	});
 	it('checks ownership before CF calls for every user action', async () => {
 		await expect(add('dest@example.com', 2)).rejects.toMatchObject({ code: 403 });
@@ -100,15 +109,54 @@ describe('mailbox forwarding with D1', () => {
 		expect(fetch).toHaveBeenCalledTimes(2);
 		expect(fetch.mock.calls[1][1].method).toBe('POST');
 	});
-	it('scopes deletion and cascades physical account deletion without deleting from CF', async () => {
+	it('scopes deletion and cascades physical account deletion without affecting shared CF destinations', async () => {
 		await add('dest@example.com');
 		await add('dest@example.com', 2, 2);
-		const [other] = await service.rows(c, 2);
-		await service.remove(c, { accountId: 1, forwardId: other.forwardId }, 1);
+		const [first] = await service.rows(c, 1);
+		await service.remove(c, { accountId: 1, forwardId: first.forwardId }, 1);
+		expect(await service.rows(c, 1)).toHaveLength(0);
 		expect(await service.rows(c, 2)).toHaveLength(1);
 		await env.db.prepare('DELETE FROM account WHERE account_id = 2').run();
 		expect(await service.rows(c, 2)).toHaveLength(0);
 		expect(fetch).toHaveBeenCalledTimes(2);
+	});
+	it('deletes a CF destination after the last local mailbox reference', async () => {
+		fetch.mockImplementation(async (_url, options) => {
+			if (options.method === 'POST') return api({ id: 'cf-address-1', verified: 'verified' });
+			if (options.method === 'GET') return api([{ id: 'cf-address-1', email: 'dest@example.com', verified: 'verified' }], { total_pages: 1 });
+			if (options.method === 'DELETE') return api({ id: 'cf-address-1' });
+		});
+		await add('dest@example.com');
+		await add('dest@example.com', 2, 2);
+		const [first] = await service.rows(c, 1);
+		await service.remove(c, { accountId: 1, forwardId: first.forwardId }, 1);
+		expect(fetch).toHaveBeenCalledTimes(2);
+		const [last] = await service.rows(c, 2);
+		await service.remove(c, { accountId: 2, forwardId: last.forwardId }, 2);
+		expect(fetch.mock.calls.map(([, options]) => options.method)).toEqual(['POST', 'POST', 'GET', 'DELETE']);
+		expect(fetch.mock.calls[3][0]).toContain('/email/routing/addresses/cf-address-1');
+	});
+	it('preserves a CF destination still configured for global forwarding', async () => {
+		fetch.mockResolvedValue(api({ id: 'cf-address-1', verified: 'verified' }));
+		await add('dest@example.com');
+		await env.db.prepare('UPDATE setting SET forward_email = ?').bind('dest@example.com').run();
+		fetch.mockClear();
+		const [row] = await service.rows(c, 1);
+		await service.remove(c, { accountId: 1, forwardId: row.forwardId }, 1);
+		expect(fetch).not.toHaveBeenCalled();
+	});
+	it('keeps local deletion successful when CF cleanup fails', async () => {
+		await add('dest@example.com');
+		const [row] = await service.rows(c, 1);
+		fetch.mockClear();
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		fetch.mockImplementation(async (_url, options) => {
+			if (options.method === 'GET') return api([{ id: 'cf-address-1', email: 'dest@example.com', verified: null }], { total_pages: 1 });
+			return new Response(JSON.stringify({ success: false, errors: [{ code: 10000 }] }), { status: 403 });
+		});
+		await expect(service.remove(c, { accountId: 1, forwardId: row.forwardId }, 1)).resolves.toBeUndefined();
+		expect(await service.rows(c, 1)).toHaveLength(0);
+		expect(fetch.mock.calls.map(([, options]) => options.method)).toEqual(['GET', 'DELETE']);
 	});
 	it('forwards only verified cached addresses and isolates delivery failures', async () => {
 		fetch.mockResolvedValueOnce(api({ verified: 'verified' })).mockResolvedValueOnce(api({ verified: 'verified' }));
@@ -139,6 +187,13 @@ describe('mailbox forwarding with D1', () => {
 		await add('alias@example.com', 3);
 		await add('other@example.com', 2, 2);
 		expect((await service.adminList(c, { userId: 1 })).list.map(row => row.source).sort()).toEqual(['alias@local.example', 'one@local.example']);
+	});
+	it('returns the forwarding permission as a child of the mailbox permission group', async () => {
+		const tree = await permService.tree(c);
+		const accountPermissions = tree.find(item => item.permId === 21);
+		const forwardPermission = accountPermissions.children.find(item => item.permKey === 'account:forward');
+		expect(forwardPermission).toMatchObject({ permId: 1001, permKey: 'account:forward' });
+		expect(['邮箱转发', 'Mailbox forwarding']).toContain(forwardPermission.name);
 	});
 });
 
@@ -196,6 +251,12 @@ describe('forwarding entry points', () => {
 		const noRecipient = message('missing@local.example');
 		await receive(noRecipient, c.env, {});
 		expect(noRecipient.forward.mock.calls).toEqual([['global@example.com']]);
+		settings.ruleEmail = 'one@local.example';
+		const forwardRows = vi.spyOn(service, 'rows').mockRejectedValueOnce(new Error('forward lookup failed'));
+		const forwardingFailure = message('one@local.example');
+		await expect(receive(forwardingFailure, c.env, {})).resolves.toBeUndefined();
+		expect(forwardingFailure.forward.mock.calls).toEqual([['global@example.com']]);
+		forwardRows.mockRestore();
 		complete.mockRejectedValue(new Error('storage failed'));
 		const failed = message('one@local.example');
 		await expect(receive(failed, c.env, {})).rejects.toThrow('storage failed');

@@ -2,6 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import orm from '../entity/orm';
 import account from '../entity/account';
 import accountForward from '../entity/account-forward';
+import setting from '../entity/setting';
 import accountService from './account-service';
 import userService from './user-service';
 import permService from './perm-service';
@@ -51,7 +52,7 @@ const accountForwardService = {
 		// Update only the snapshot: a concurrent add must not be marked unverified.
 		for (let offset = 0; offset < rows.length; offset += 50) {
 			await orm(c).batch(rows.slice(offset, offset + 50).map(row =>
-				orm(c).update(accountForward).set({ verified: addresses.get(row.email) || null })
+				orm(c).update(accountForward).set({ verified: addresses.get(row.email)?.verified || null })
 					.where(eq(accountForward.forwardId, row.forwardId))));
 		}
 	},
@@ -92,9 +93,19 @@ const accountForwardService = {
 
 	async remove(c, params, userId) {
 		const row = await this.owner(c, params.accountId, userId);
-		// Never delete the shared CF destination; other mailboxes may still use it.
-		await orm(c).delete(accountForward).where(and(eq(accountForward.accountId, row.accountId),
-			eq(accountForward.forwardId, Number(params.forwardId)))).run();
+		const removed = await orm(c).delete(accountForward).where(and(eq(accountForward.accountId, row.accountId),
+			eq(accountForward.forwardId, Number(params.forwardId)))).returning({ email: accountForward.email }).get();
+		if (!removed || !cfAddressService.configured(c)) return;
+		try {
+			const remaining = await orm(c).select({ forwardId: accountForward.forwardId }).from(accountForward)
+				.where(eq(accountForward.email, removed.email)).get();
+			if (remaining) return;
+			const { forwardEmail } = await orm(c).select({ forwardEmail: setting.forwardEmail }).from(setting).get() || {};
+			if (forwardEmail?.split(',').some(email => email.trim().toLowerCase() === removed.email)) return;
+			await cfAddressService.delete(c, removed.email);
+		} catch (error) {
+			console.error('删除未引用的 Cloudflare 转发目标失败:', error);
+		}
 	},
 
 	async resend(c, params, userId) {
